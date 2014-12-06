@@ -14,8 +14,7 @@ public class Enemy : MonoBehaviour
 
 	private void Kill()
 	{
-		Destroy(gameObject);
-		// TODO: spawn explosion!
+		this.Recycle();
 	}
 
 	// Use this for initialization

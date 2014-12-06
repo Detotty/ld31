@@ -63,6 +63,8 @@ public class Arena : MonoBehaviour
 
 	private void SpawnEnemies()
 	{
+		enemies.Clear();
+
 		int numOfEnemies = Rows * Columns / 25; // simple formula first...
 
 		// subdivisions. 4, 4, 8, 16, 32...
@@ -197,13 +199,15 @@ public class Arena : MonoBehaviour
 		SpawnEnemies();
 
 		Camera.main.orthographicSize = Mathf.Min(Rows, Columns) / 2;
-
-		Expand();
 	}
 
 	// Update is called once per frame
 	void Update()
 	{
-
+		if (EnemyPrefab.CountSpawned() == 0)
+		{
+			Expand();
+			SpawnEnemies();
+		}
 	}
 }
