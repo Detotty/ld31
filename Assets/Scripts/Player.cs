@@ -67,6 +67,9 @@ public class Player : MonoBehaviour
 	// Update is called once per frame
 	void Update()
 	{
+		if (Time.timeScale == 0)
+			return;
+
 		horizontal = (int) Input.GetAxisRaw("Horizontal");
 		vertical = (int) Input.GetAxisRaw("Vertical");
 		direction = Camera.main.ScreenToWorldPoint(Input.mousePosition) - TransformCache.position;

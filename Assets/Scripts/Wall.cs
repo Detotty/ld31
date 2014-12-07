@@ -9,7 +9,7 @@ public class Wall : MonoBehaviour
 	public void Explode()
 	{
 		Explosion.Explode(TransformCache.position, 1.0f, 0.5f);
-		TimeScale.Set(0.75f, 0.05f);
+		//TimeScale.Set(0.75f, 0.05f);
 		this.Recycle();
 	}
 

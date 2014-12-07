@@ -223,6 +223,7 @@ public class Arena : MonoBehaviour
 
 	void Awake()
 	{
+		ObjectCache.Clear();
 		transformCache = transform;
 	}
 
@@ -287,17 +288,19 @@ public class Arena : MonoBehaviour
 					}
 					else
 						willCompress = false;
-					Timer = level * 2 + 10;
+					Timer = level + 10;
 				}
 			}
 		}
 		else if (gameOver)
 		{
-			if (Input.GetKey(KeyCode.Escape) || Input.GetKey(KeyCode.Backspace))
-				; // TODO load menu
+			if (Input.GetKeyDown(KeyCode.Escape) || Input.GetKeyDown(KeyCode.Backspace))
+			{
+				Time.timeScale = 1.0f;
+				Application.LoadLevel("MenuScene");
+			}
 			else if (Input.anyKeyDown)
 			{
-				ObjectCache.Clear();
 				Time.timeScale = 1.0f;
 				Application.LoadLevel(Application.loadedLevel);
 			}

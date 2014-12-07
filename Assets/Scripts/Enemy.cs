@@ -41,7 +41,7 @@ public class Enemy : MonoBehaviour
 
 		boneEmitter.Emit();
 		Explosion.Explode(TransformCache.position, Random.Range(1.0f, 2.0f), 0.5f);
-		TimeScale.Set(0.5f, 0.1f);
+		TimeScale.Set(0.75f, 0.05f);
 		this.Recycle();
 	}
 
