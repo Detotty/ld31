@@ -25,10 +25,18 @@ public class Player : MonoBehaviour
 
 	public void Hit(int damage)
 	{
-		Health -= damage;
+		//Health -= damage;
 		Arena.Timer -= 1.0f;
+		Arena.Score -= 100;
+		Arena.TimerText.rectTransform.localScale = new Vector3(1.5f, 1.5f);
+		LeanTween.scale(Arena.TimerText.rectTransform, Vector3.one, 0.1f).setEase(LeanTweenType.easeInExpo);
 		//if (Health < damage)
 		//Kill();
+	}
+
+	public void Kill()
+	{
+		LeanTween.scale(gameObject, new Vector3(0, 0, 1.0f), 0.5f).setDestroyOnComplete(true);
 	}
 
 	private void Shoot()
@@ -77,6 +85,10 @@ public class Player : MonoBehaviour
 			TransformCache.localScale = scale;
 		}
 		animator.SetBool("Idle", horizontal == 0 && vertical == 0);
+
+		Vector3 pos = TransformCache.position;
+		pos.z = pos.y + Arena.Rows;
+		TransformCache.position = pos;
 	}
 
 	void FixedUpdate()

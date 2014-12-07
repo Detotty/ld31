@@ -12,8 +12,10 @@ public class Enemy : MonoBehaviour
 	public float FollowPlayerDelay = 0.5f;
 	public float RateOfFire = 4.0f;
 
-	private Transform transformCache;
+	public Transform TransformCache { get; private set; }
 	private Rigidbody2D rigidbodyCache;
+	private Animator animator;
+	private BoneEmitter boneEmitter;
 
 	private Player player;
 	private Arena arena;
@@ -34,28 +36,38 @@ public class Enemy : MonoBehaviour
 			Kill();
 	}
 
-	private void Kill()
+	public void Kill()
 	{
-		Explosion.Explode(transformCache.position, Random.Range(1.0f, 2.0f), 0.5f);
+		arena.Score += Mathf.CeilToInt(arena.Timer * 100);
+
+		boneEmitter.Emit();
+		Explosion.Explode(TransformCache.position, Random.Range(1.0f, 2.0f), 0.5f);
 		TimeScale.Set(0.5f, 0.1f);
 		this.Recycle();
 	}
 
 	private void Shoot()
 	{
-		if (shootDelay > 0 || arena.Timer <= 0)
+		if (shootDelay > 0)
 			return;
 
 		Bullet bullet = BulletPrefab.Spawn();
-		bullet.Initialize(player.TransformCache.position - transformCache.position, transformCache.position);
+		Vector2 offset = Random.insideUnitCircle;
+		offset.x *= Mathf.Abs(offset.x);
+		offset.y *= Mathf.Abs(offset.y);
+		offset *= 1.5f;
+		Vector3 shootAt = player.TransformCache.position + new Vector3(offset.x, offset.y);
+		bullet.Initialize(shootAt - TransformCache.position, TransformCache.position);
 
 		shootDelay = Random.Range(1.0f / RateOfFire, 2.0f / RateOfFire);
 	}
 
 	void Awake()
 	{
-		transformCache = transform;
+		TransformCache = transform;
 		rigidbodyCache = rigidbody2D;
+		animator = GetComponent<Animator>();
+		boneEmitter = GetComponent<BoneEmitter>();
 	}
 
 	// Use this for initialization
@@ -77,10 +89,10 @@ public class Enemy : MonoBehaviour
 			shootDelay = Random.Range(0.5f, 1.0f);
 			spawning = true;
 
-			Vector3 scale = transformCache.localScale;
-			transformCache.localScale = new Vector3(0, 0, 1.0f);
+			Vector3 scale = TransformCache.localScale;
+			TransformCache.localScale = new Vector3(0, 0, 1.0f);
 
-			if (followPlayerTarget.x < transformCache.position.x)
+			if (followPlayerTarget.x < TransformCache.position.x)
 			{
 				scale.x *= -1;
 			}
@@ -94,23 +106,33 @@ public class Enemy : MonoBehaviour
 	// Update is called once per frame
 	void Update()
 	{
-		if (spawning)
+		Vector3 p = TransformCache.position;
+		p.z = p.y + arena.Rows;
+		TransformCache.position = p;
+
+		if (spawning || arena.Timer <= 0)
+		{
+			animator.SetBool("Idle", true);
 			return;
+		}
+
+		animator.SetBool("Idle", false);
 
 		followPlayerTimeElapsed += Time.deltaTime;
 		if (followPlayerTimeElapsed >= FollowPlayerDelay)
 		{
 			followPlayerTimeElapsed -= FollowPlayerDelay;
-			Vector2 offset = Random.insideUnitCircle * 5.0f;
-			followPlayerTarget = player.TransformCache.position + new Vector3(offset.x, offset.y);
+			Vector2 pos = new Vector2(Random.Range(-arena.Columns + 1.5f, arena.Columns - 2.5f),
+				Random.Range(-arena.Rows + 1.5f, arena.Rows - 2.5f));
+			followPlayerTarget = pos;
 		}
 
-		Vector3 scale = transformCache.localScale;
+		Vector3 scale = TransformCache.localScale;
 		if ((player.TransformCache.position.x < 0 && scale.x > 0) ||
 			(player.TransformCache.position.x > 0 && scale.x < 0))
 		{
 			scale.x *= -1;
-			transformCache.localScale = scale;
+			TransformCache.localScale = scale;
 		}
 
 		shootDelay -= Time.deltaTime;
@@ -120,10 +142,13 @@ public class Enemy : MonoBehaviour
 
 	void FixedUpdate()
 	{
-		if (spawning)
+		if (spawning || arena.Timer <= 0)
+		{
+			rigidbodyCache.velocity = Vector2.zero;
 			return;
+		}
 
-		Vector3 dir = followPlayerTarget - transformCache.position;
+		Vector3 dir = followPlayerTarget - TransformCache.position;
 		dir.Normalize();
 		rigidbodyCache.velocity += Vector2.ClampMagnitude(
 			dir * Acceleration, Acceleration) * Time.fixedDeltaTime;

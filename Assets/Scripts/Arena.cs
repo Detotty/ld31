@@ -19,6 +19,7 @@ public class Arena : MonoBehaviour
 	public int Columns = 10;
 
 	public float Timer = 10.0f;
+	public int Score = 0;
 
 	private Transform transformCache;
 
@@ -27,16 +28,21 @@ public class Arena : MonoBehaviour
 	private List<Enemy> enemies;
 
 	private int level;
+	private int highestRows;
 
 	private bool destroyingWalls;
 	private float destroyWallsDelay;
 	private bool willCompress;
+	private bool gameOver;
 
 	private void Expand()
 	{
 		Rows += 2;
 		Columns += 2;
 		willCompress = false;
+
+		if (Rows > highestRows)
+			highestRows = Rows;
 
 		DestroyWalls();
 		CreateWalls();
@@ -81,13 +87,20 @@ public class Arena : MonoBehaviour
 
 	private void CreateWallAt(int row, int column)
 	{
-		Wall wall = WallPrefab.Spawn(transformCache,
-			new Vector3(column - Columns / 2 + 0.5f, -row + Rows / 2 - 0.5f, (float) -row / Rows));
-		walls.Add(wall);
-		if(row == 0)
+		if (row == 0)
+		{
+			Wall wall = WallPrefab.Spawn(transformCache,
+				new Vector3(column - Columns / 2 + 0.5f, -row + Rows / 2 - 0.5f, Rows));
+			walls.Add(wall);
 			wall.Back();
+		}
 		else
+		{
+			Wall wall = WallPrefab.Spawn(transformCache,
+				new Vector3(column - Columns / 2 + 0.5f, -row + Rows / 2 - 0.5f, (float)-row / Rows));
+			walls.Add(wall);
 			wall.Front();
+		}
 	}
 
 	private void SpawnEnemies()
@@ -95,7 +108,7 @@ public class Arena : MonoBehaviour
 		enemies.Clear();
 
 		//int numOfEnemies = Rows * Columns / 25; // simple formula first...
-		int numOfEnemies = Mathf.CeilToInt(Mathf.Pow(Mathf.Sin(level * 2 + 10) / 2 + Rows / 4.0f, 1.5f));
+		int numOfEnemies = Mathf.CeilToInt(Mathf.Pow(Mathf.Sin(level * 2 + 10) / 2 + (level * 2 + 10) / 4.0f, 1.5f));
 
 		// subdivisions. 4, 4, 8, 16, 32...
 		// add up: 4, 8, 16, 32
@@ -232,6 +245,7 @@ public class Arena : MonoBehaviour
 			wall.Spawn();
 		}
 
+		highestRows = Rows;
 		Floor.localScale = new Vector3(Columns, Rows, 1.0f);
 		Camera.main.orthographicSize = Mathf.Min(Rows, Columns) / 2;
 	}
@@ -245,33 +259,57 @@ public class Arena : MonoBehaviour
 			if (destroyWallsDelay <= 0)
 			{
 				destroyWallsDelay += 0.1f;
-				
+
 				wallsDestroying[0].Explode();
 				wallsDestroying.RemoveAt(0);
 
 				if (wallsDestroying.Count == 0)
 				{
+					if (gameOver)
+					{
+						Rows = highestRows;
+						Columns = highestRows;
+					}
+
 					LeanTween.value(gameObject,
 						ExpandCameraSize, Camera.main.orthographicSize, Mathf.Min(Rows, Columns) / 2, 1.0f)
 							.setEase(LeanTweenType.easeOutSine);
-					foreach (Wall wall in walls)
-						wall.Spawn();
 					LeanTween.scale(Floor.gameObject, new Vector3(Columns, Rows, 1.0f), 1.0f)
 						.setEase(LeanTweenType.easeOutSine);
 
 					destroyingWalls = false;
 
+					if (gameOver)
+						return;
+
 					if (!willCompress)
+					{
+						foreach (Wall wall in walls)
+							wall.Spawn();
 						SpawnEnemies();
+					}
 					else
 						willCompress = false;
-					Timer = Rows;
+					Timer = level * 2 + 10;
 				}
 			}
+		}
+		else if (gameOver)
+		{
+			if (Input.GetKey(KeyCode.Escape) || Input.GetKey(KeyCode.Backspace))
+				; // TODO load menu
+			else if (Input.anyKeyDown)
+			{
+				ObjectCache.Clear();
+				Time.timeScale = 1.0f;
+				Application.LoadLevel(Application.loadedLevel);
+			}
+			return;
 		}
 		else if (EnemyPrefab.CountSpawned() == 0)
 		{
 			level++;
+			Score += Mathf.CeilToInt(Timer * 1000 + level * 1000);
 			Expand();
 		}
 		else if (!willCompress)
@@ -281,8 +319,79 @@ public class Arena : MonoBehaviour
 			{
 				Timer = 0;
 				Compress();
+				foreach (Wall wall in walls)
+					wall.Spawn();
+
+				if (Rows == 2)
+				{
+					GameOver();
+					return;
+				}
+
+				Vector3 ppos = Player.TransformCache.position;
+				if (ppos.x <= -Columns / 2 + 2)
+					ppos.x += 1.0f;
+				else if (ppos.x >= Columns / 2 - 2)
+					ppos.x -= 1.0f;
+				if (ppos.y <= -Rows / 2 + 2)
+					ppos.y += 1.0f;
+				else if (ppos.y >= Rows / 2 - 2)
+					ppos.y -= 1.0f;
+				if (ppos != Player.TransformCache.position)
+					LeanTween.move(Player.gameObject, ppos, 1.0f);
+
+				foreach (Enemy enemy in enemies)
+				{
+					if (enemy != null && enemy.enabled)
+					{
+						Vector3 epos = enemy.TransformCache.position;
+						if (epos.x <= -Columns / 2 + 2)
+							epos.x += 1.0f;
+						else if (epos.x >= Columns / 2 - 2)
+							epos.x -= 1.0f;
+						if (epos.y <= -Rows / 2 + 2)
+							epos.y += 1.0f;
+						else if (epos.y >= Rows / 2 - 2)
+							epos.y -= 1.0f;
+						if (epos != Player.TransformCache.position)
+							LeanTween.move(enemy.gameObject, epos, 1.0f);
+					}
+				}
+
+				//for (int col = 1; col < Columns - 1; col++)
+				//	walls[col].TransformCache.localScale = new Vector3(1.0f, 0, 1.0f);
+				//for (int row = 1; row < Rows - 1; row++)
+				//	walls[Columns - 1 + row].TransformCache.localScale = new Vector3(0, 1.0f, 1.0f);
+				//for (int col = Columns - 2; col >= 0; col--)
+				//	walls[Columns - 1 + Rows - 1 + col].TransformCache.localScale = new Vector3(1.0f, 0, 1.0f);
+				//for (int row = Rows - 2; row > 0; row--)
+				//	walls[Columns - 1 + Rows - 1 + Columns - 1 + row].TransformCache.localScale = new Vector3(0, 1.0f, 1.0f);
+
+				//foreach (Wall wall in walls)
+				//{
+				//	LeanTween.scale(wall.gameObject, new Vector3(1.0f, 1.0f), 0.5f);
+				//}
 			}
 		}
-		TimerText.text = Mathf.CeilToInt(Timer).ToString();
+
+		if (!gameOver)
+			TimerText.text = Mathf.CeilToInt(Mathf.Max(0, Timer)).ToString();
+	}
+
+	private void GameOver()
+	{
+		foreach (Enemy enemy in EnemyPrefab.GetSpawned())
+		{
+			enemy.Kill();
+		}
+		Player.Kill();
+
+		destroyingWalls = true;
+		destroyWallsDelay = 1.1f;
+		wallsDestroying = WallPrefab.GetSpawned();
+
+		gameOver = true;
+
+		TimerText.text = "GAME OVER\nSCORE: " + Score;
 	}
 }

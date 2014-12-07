@@ -3,14 +3,13 @@ using System.Collections;
 
 public class Wall : MonoBehaviour
 {
-
-	private Transform transformCache;
+	public Transform TransformCache { get; private set; }
 	private Transform childTransformCache;
 	private SpriteRenderer spriteRenderer;
 
 	public void Explode()
 	{
-		Explosion.Explode(transformCache.position, 1.0f, 0.5f);
+		Explosion.Explode(TransformCache.position, 1.0f, 0.5f);
 		TimeScale.Set(0.75f, 0.05f);
 		this.Recycle();
 	}
@@ -32,12 +31,12 @@ public class Wall : MonoBehaviour
 
 	void Awake()
 	{
-		transformCache = transform;
+		TransformCache = transform;
 	}
 
 	void OnEnable()
 	{
-		childTransformCache = transformCache.FindChild("Wall");
+		childTransformCache = TransformCache.FindChild("Wall");
 		spriteRenderer = childTransformCache.GetComponent<SpriteRenderer>();
 
 		childTransformCache.localScale = new Vector3(1.0f, 0, 1.0f);

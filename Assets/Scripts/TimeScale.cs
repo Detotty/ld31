@@ -7,9 +7,15 @@ public class TimeScale : MonoBehaviour
 	private static TimeScale instance;
 	public static TimeScale Instance
 	{
-		get {
-			return instance ??
-				(instance = (Instantiate(new GameObject("TimeScale")) as GameObject).AddComponent<TimeScale>());
+		get
+		{
+			if (instance == null)
+			{
+				GameObject go = Instantiate(new GameObject("TimeScale")) as GameObject;
+				DontDestroyOnLoad(go);
+				instance = go.AddComponent<TimeScale>();
+			}
+			return instance;
 		}
 	}
 

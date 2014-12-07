@@ -5,16 +5,20 @@ using System.Collections;
 public class CameraShake : MonoBehaviour
 {
 
+	private static GameObject cameraInstance;
 	private static CameraShake instance;
-
 	private static CameraShake Instance
 	{
 		get
 		{
+			if (cameraInstance == null)
+			{
+				cameraInstance = Camera.main.gameObject;
+			}
 			if (instance == null)
 			{
 				instance = Camera.main.GetComponent<CameraShake>() ??
-					Camera.main.gameObject.AddComponent<CameraShake>();
+					cameraInstance.AddComponent<CameraShake>();
 			}
 			return instance;
 		}

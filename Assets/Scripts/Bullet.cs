@@ -16,7 +16,7 @@ public class Bullet : MonoBehaviour
 	{
 		transformCache.rotation = Quaternion.LookRotation(Vector3.forward, dir);
 		transformCache.position = new Vector3(pos.x, pos.y, transformCache.position.z);
-		transformCache.position += transformCache.up;
+		transformCache.position += transformCache.up * 0.5f;
 
 		rigidbodyCache.velocity = transformCache.up * Speed;
 	}
@@ -42,13 +42,19 @@ public class Bullet : MonoBehaviour
 
 	public void OnTriggerEnter2D(Collider2D other)
 	{
-		if (CompareTag("Bullet") && other.CompareTag("Enemy"))
+		if (CompareTag("Bullet"))
 		{
-			other.GetComponent<Enemy>().Hit(Damage);
+			if (other.CompareTag("Enemy"))
+				other.GetComponent<Enemy>().Hit(Damage);
+			else if (other.CompareTag("Player"))
+				return;
 		}
-		if (CompareTag("EnemyBullet") && other.CompareTag("Player"))
+		if (CompareTag("EnemyBullet"))
 		{
-			other.GetComponent<Player>().Hit(Damage);
+			if (other.CompareTag("Player"))
+				other.GetComponent<Player>().Hit(Damage);
+			else if (other.CompareTag("Enemy"))
+				return;
 		}
 
 		if (!other.CompareTag("Bullet") && !other.CompareTag("EnemyBullet"))
