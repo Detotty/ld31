@@ -4,6 +4,8 @@ using System.Collections;
 public class Bullet : MonoBehaviour
 {
 
+	public AudioClip Sound;
+
 	public float Speed = 10.0f;
 	public int Damage = 100;
 
@@ -25,6 +27,14 @@ public class Bullet : MonoBehaviour
 		rigidbodyCache = rigidbody2D;
 	}
 
+	void OnEnable()
+	{
+		if (Sound != null)
+		{
+			AudioSource.PlayClipAtPoint(Sound, transformCache.position, 0.25f);
+		}
+	}
+
 	// Update is called once per frame
 	void Update()
 	{
@@ -32,11 +42,17 @@ public class Bullet : MonoBehaviour
 
 	public void OnTriggerEnter2D(Collider2D other)
 	{
-		if (other.CompareTag("Enemy"))
+		if (CompareTag("Bullet") && other.CompareTag("Enemy"))
 		{
 			other.GetComponent<Enemy>().Hit(Damage);
 		}
-		this.Recycle();
+		if (CompareTag("EnemyBullet") && other.CompareTag("Player"))
+		{
+			other.GetComponent<Player>().Hit(Damage);
+		}
+
+		if (!other.CompareTag("Bullet") && !other.CompareTag("EnemyBullet"))
+			this.Recycle();
 	}
 
 }

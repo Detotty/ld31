@@ -4,6 +4,8 @@
 TagManager:
   tags:
   - Enemy
+  - EnemyBullet
+  - Bullet
   - 
   Builtin Layer 0: Default
   Builtin Layer 1: TransparentFX
@@ -46,6 +48,10 @@ TagManager:
     userID: 2
     uniqueID: 396477015
     locked: 0
+  - name: WallBack
+    userID: 6
+    uniqueID: 2175261455
+    locked: 0
   - name: Enemy
     userID: 4
     uniqueID: 2432743293
@@ -61,4 +67,8 @@ TagManager:
   - name: Wall
     userID: 3
     uniqueID: 711902531
+    locked: 0
+  - name: Explosion
+    userID: 7
+    uniqueID: 526158473
     locked: 0

@@ -1,32 +1,55 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Threading;
 using UnityEngine;
 using System.Collections;
+using UnityEngine.UI;
 using Random = UnityEngine.Random;
 
 public class Arena : MonoBehaviour
 {
 
-	public Transform FloorPrefab;
-	public Transform WallPrefab;
+	public Transform Floor;
+	public Wall WallPrefab;
 	public Enemy EnemyPrefab;
+	public Player Player;
+	public Text TimerText;
 
 	public int Rows = 10;
 	public int Columns = 10;
 
+	public float Timer = 10.0f;
+
 	private Transform transformCache;
 
-	private List<Transform> walls;
+	private List<Wall> walls;
+	private List<Wall> wallsDestroying;
 	private List<Enemy> enemies;
 
-	public void Expand()
+	private int level;
+
+	private bool destroyingWalls;
+	private float destroyWallsDelay;
+	private bool willCompress;
+
+	private void Expand()
 	{
 		Rows += 2;
 		Columns += 2;
+		willCompress = false;
 
+		DestroyWalls();
 		CreateWalls();
-		LeanTween.value(gameObject, ExpandCameraSize, Camera.main.orthographicSize, Mathf.Min(Rows, Columns) / 2, 1.0f)
-			.setEase(LeanTweenType.easeOutCubic);
+	}
+
+	private void Compress()
+	{
+		Rows -= 2;
+		Columns -= 2;
+		willCompress = true;
+
+		DestroyWalls();
+		CreateWalls();
 	}
 
 	private void ExpandCameraSize(float value)
@@ -34,38 +57,45 @@ public class Arena : MonoBehaviour
 		Camera.main.orthographicSize = value;
 	}
 
+	private void DestroyWalls()
+	{
+		destroyingWalls = true;
+		destroyWallsDelay = 0.1f;
+		wallsDestroying = new List<Wall>(walls);
+	}
+
 	private void CreateWalls()
 	{
-		foreach (Transform wall in walls)
-			wall.Recycle();
 		walls.Clear();
 
-		for (int row = 0; row < Rows; row++)
-		{
-			if (row == 0 || row == Rows - 1)
-			{
-				for (int col = 1; col < Columns - 1; col++)
-				{
-					CreateWallAt(row, col);
-				}
-			}
-			CreateWallAt(row, 0);
+		// have to create walls clockwise so that when they get destroyed they'll be in order...
+		for (int col = 0; col < Columns; col++)
+			CreateWallAt(0, col);
+		for (int row = 1; row < Rows - 1; row++)
 			CreateWallAt(row, Columns - 1);
-		}
+		for (int col = Columns - 1; col >= 0; col--)
+			CreateWallAt(Rows - 1, col);
+		for (int row = Rows - 2; row > 0; row--)
+			CreateWallAt(row, 0);
 	}
 
 	private void CreateWallAt(int row, int column)
 	{
-		Transform wall = WallPrefab.Spawn(transformCache,
-			new Vector3(column - Columns / 2 + 0.5f, row - Rows / 2 + 0.5f));
+		Wall wall = WallPrefab.Spawn(transformCache,
+			new Vector3(column - Columns / 2 + 0.5f, -row + Rows / 2 - 0.5f, (float) -row / Rows));
 		walls.Add(wall);
+		if(row == 0)
+			wall.Back();
+		else
+			wall.Front();
 	}
 
 	private void SpawnEnemies()
 	{
 		enemies.Clear();
 
-		int numOfEnemies = Rows * Columns / 25; // simple formula first...
+		//int numOfEnemies = Rows * Columns / 25; // simple formula first...
+		int numOfEnemies = Mathf.CeilToInt(Mathf.Pow(Mathf.Sin(level * 2 + 10) / 2 + Rows / 4.0f, 1.5f));
 
 		// subdivisions. 4, 4, 8, 16, 32...
 		// add up: 4, 8, 16, 32
@@ -189,7 +219,7 @@ public class Arena : MonoBehaviour
 	// Use this for initialization
 	void Start()
 	{
-		walls = new List<Transform>();
+		walls = new List<Wall>();
 		enemies = new List<Enemy>();
 
 		WallPrefab.CreatePool();
@@ -197,17 +227,62 @@ public class Arena : MonoBehaviour
 
 		CreateWalls();
 		SpawnEnemies();
+		foreach (Wall wall in walls)
+		{
+			wall.Spawn();
+		}
 
+		Floor.localScale = new Vector3(Columns, Rows, 1.0f);
 		Camera.main.orthographicSize = Mathf.Min(Rows, Columns) / 2;
 	}
 
 	// Update is called once per frame
 	void Update()
 	{
-		if (EnemyPrefab.CountSpawned() == 0)
+		if (destroyingWalls)
 		{
-			Expand();
-			SpawnEnemies();
+			destroyWallsDelay -= Time.deltaTime;
+			if (destroyWallsDelay <= 0)
+			{
+				destroyWallsDelay += 0.1f;
+				
+				wallsDestroying[0].Explode();
+				wallsDestroying.RemoveAt(0);
+
+				if (wallsDestroying.Count == 0)
+				{
+					LeanTween.value(gameObject,
+						ExpandCameraSize, Camera.main.orthographicSize, Mathf.Min(Rows, Columns) / 2, 1.0f)
+							.setEase(LeanTweenType.easeOutSine);
+					foreach (Wall wall in walls)
+						wall.Spawn();
+					LeanTween.scale(Floor.gameObject, new Vector3(Columns, Rows, 1.0f), 1.0f)
+						.setEase(LeanTweenType.easeOutSine);
+
+					destroyingWalls = false;
+
+					if (!willCompress)
+						SpawnEnemies();
+					else
+						willCompress = false;
+					Timer = Rows;
+				}
+			}
 		}
+		else if (EnemyPrefab.CountSpawned() == 0)
+		{
+			level++;
+			Expand();
+		}
+		else if (!willCompress)
+		{
+			Timer -= Time.deltaTime;
+			if (Timer <= 0)
+			{
+				Timer = 0;
+				Compress();
+			}
+		}
+		TimerText.text = Mathf.CeilToInt(Timer).ToString();
 	}
 }
